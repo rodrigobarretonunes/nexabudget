@@ -1,53 +1,415 @@
 import { useEffect, useState } from 'react';
-import type { Transaction, DeferredDebit, Goal, PlanningEvent } from '../types';
-import { seedTransactions, seedDeferredDebits, seedGoals, seedPlanningEvents } from '../data/seed';
 
-function usePersisted<T>(key: string, initial: T) {
-  const [state, setState] = useState<T>(() => {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : initial;
-  });
-  useEffect(() => localStorage.setItem(key, JSON.stringify(state)), [key, state]);
-  return [state, setState] as const;
-}
+import type {
+  Transaction,
+  DeferredDebit,
+  Goal,
+  PlanningEvent,
+} from '../types';
+
+
+import {
+  getTransactions,
+  createTransaction,
+  deleteTransaction,
+} from '../services/transactions';
+
+
+import {
+  getGoals,
+  createGoal,
+  updateGoal as updateGoalService,
+  deleteGoal,
+} from '../services/goals';
+
+
+import {
+  getPlanningEvents,
+  createPlanningEvent,
+  deletePlanningEvent,
+} from '../services/planningEvents';
+
+
+import {
+  getDeferredDebits,
+  createDeferredDebit,
+  deleteDeferredDebit,
+} from '../services/deferredDebits';
+
+
 
 export function useBudgetStore() {
-  const [transactions, setTransactions] = usePersisted<Transaction[]>('nb-transactions', seedTransactions);
-  const [deferredDebits, setDeferredDebits] = usePersisted<DeferredDebit[]>('nb-debits', seedDeferredDebits);
-  const [goals, setGoals] = usePersisted<Goal[]>('nb-goals', seedGoals);
-  const [planning, setPlanning] = usePersisted<PlanningEvent[]>('nb-planning', seedPlanningEvents);
 
-  const addTransaction = (t: Omit<Transaction, 'id'>) =>
-    setTransactions((prev) => [{ ...t, id: crypto.randomUUID() }, ...prev]);
 
-  const removeTransaction = (id: string) =>
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const addDebit = (d: Omit<DeferredDebit, 'id'>) =>
-    setDeferredDebits((prev) => [{ ...d, id: crypto.randomUUID() }, ...prev]);
+  const [deferredDebits, setDeferredDebits] = useState<DeferredDebit[]>([]);
 
-  const removeDebit = (id: string) =>
-    setDeferredDebits((prev) => prev.filter((d) => d.id !== id));
+  const [goals, setGoals] = useState<Goal[]>([]);
 
-  const addGoal = (g: Omit<Goal, 'id'>) =>
-    setGoals((prev) => [{ ...g, id: crypto.randomUUID() }, ...prev]);
+  const [planning, setPlanning] = useState<PlanningEvent[]>([]);
 
-  const updateGoal = (id: string, current: number) =>
-    setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, current } : g)));
 
-  const removeGoal = (id: string) =>
-    setGoals((prev) => prev.filter((g) => g.id !== id));
+  const [loading, setLoading] = useState(true);
 
-  const addPlanningEvent = (p: Omit<PlanningEvent, 'id'>) =>
-    setPlanning((prev) => [...prev, { ...p, id: crypto.randomUUID() }].sort((a, b) => a.date.localeCompare(b.date)));
 
-  const removePlanningEvent = (id: string) =>
-    setPlanning((prev) => prev.filter((p) => p.id !== id));
+
+
+  useEffect(() => {
+
+
+    async function load(){
+
+
+      try{
+
+
+        const [
+          transactionsData,
+          debitsData,
+          goalsData,
+          planningData
+
+        ] = await Promise.all([
+
+          getTransactions(),
+
+          getDeferredDebits(),
+
+          getGoals(),
+
+          getPlanningEvents()
+
+        ]);
+
+
+
+        setTransactions(transactionsData);
+
+        setDeferredDebits(debitsData);
+
+        setGoals(goalsData);
+
+        setPlanning(planningData);
+
+
+
+      }catch(error){
+
+        console.error(
+          "Erro carregando dados:",
+          error
+        );
+
+
+      }finally{
+
+        setLoading(false);
+
+      }
+
+    }
+
+
+
+    load();
+
+
+
+  }, []);
+
+
+
+
+
+
+  // ==========================
+  // TRANSACTIONS
+  // ==========================
+
+
+  async function addTransaction(
+    t:Omit<Transaction,'id'|'ownerId'>
+  ){
+
+
+    const created = await createTransaction(t);
+
+
+    setTransactions(prev=>[
+      created,
+      ...prev
+    ]);
+
+  }
+
+
+
+
+  async function removeTransaction(
+    id:string
+  ){
+
+
+    await deleteTransaction(id);
+
+
+    setTransactions(prev=>
+      prev.filter(t=>t.id!==id)
+    );
+
+  }
+
+
+
+
+
+
+
+  // ==========================
+  // DEFERRED DEBITS
+  // ==========================
+
+
+  async function addDebit(
+    d:Omit<DeferredDebit,'id'>
+  ){
+
+
+    const created = await createDeferredDebit(d);
+
+
+
+    setDeferredDebits(prev=>[
+
+      created,
+
+      ...prev
+
+    ]);
+
+  }
+
+
+
+
+
+  async function removeDebit(
+    id:string
+  ){
+
+
+    await deleteDeferredDebit(id);
+
+
+
+    setDeferredDebits(prev=>
+
+      prev.filter(d=>d.id!==id)
+
+    );
+
+
+  }
+
+
+
+
+
+
+
+  // ==========================
+  // GOALS
+  // ==========================
+
+
+
+  async function addGoal(
+    g:Omit<Goal,'id'>
+  ){
+
+
+    const created = await createGoal(g);
+
+
+
+    setGoals(prev=>[
+
+      created,
+
+      ...prev
+
+    ]);
+
+  }
+
+
+
+
+
+
+  async function updateGoal(
+    id:string,
+    current:number
+  ){
+
+
+    const updated = await updateGoalService(
+      id,
+      current
+    );
+
+
+
+    setGoals(prev=>
+
+      prev.map(g=>
+
+        g.id===id
+
+        ? updated
+
+        : g
+
+      )
+
+    );
+
+  }
+
+
+
+
+
+
+  async function removeGoal(
+    id:string
+  ){
+
+
+    await deleteGoal(id);
+
+
+
+    setGoals(prev=>
+
+      prev.filter(g=>g.id!==id)
+
+    );
+
+  }
+
+
+
+
+
+
+
+
+  // ==========================
+  // PLANNING
+  // ==========================
+
+
+  async function addPlanningEvent(
+    p:Omit<PlanningEvent,'id'>
+  ){
+
+
+    const created = await createPlanningEvent(p);
+
+
+
+    setPlanning(prev=>
+
+      [
+
+        ...prev,
+
+        created
+
+      ]
+
+      .sort(
+
+        (a,b)=>
+
+        a.date.localeCompare(b.date)
+
+      )
+
+    );
+
+  }
+
+
+
+
+
+  async function removePlanningEvent(
+    id:string
+  ){
+
+
+    await deletePlanningEvent(id);
+
+
+
+    setPlanning(prev=>
+
+      prev.filter(p=>p.id!==id)
+
+    );
+
+
+  }
+
+
+
+
+
 
   return {
-    transactions, addTransaction, removeTransaction,
-    deferredDebits, addDebit, removeDebit,
-    goals, addGoal, updateGoal, removeGoal,
-    planning, addPlanningEvent, removePlanningEvent,
+
+
+    transactions,
+
+    addTransaction,
+
+    removeTransaction,
+
+
+
+    deferredDebits,
+
+    addDebit,
+
+    removeDebit,
+
+
+
+    goals,
+
+    addGoal,
+
+    updateGoal,
+
+    removeGoal,
+
+
+
+    planning,
+
+    addPlanningEvent,
+
+    removePlanningEvent,
+
+
+
+    loading,
+
+
   };
+
+
 }
