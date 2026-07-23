@@ -1,9 +1,18 @@
-import { Moon, Sun } from 'lucide-react';
+import { LogOut, Moon, Sun } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
+import { useAuth } from '../hooks/useAuth';
 import type { Scope } from './AppShell';
 
 export function Topbar({ scope, setScope, title }: { scope: Scope; setScope: (s: Scope) => void; title: string }) {
   const { dark, toggle } = useTheme();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut();
+    navigate('/login');
+  }
 
   return (
     <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3.5">
@@ -28,6 +37,13 @@ export function Topbar({ scope, setScope, title }: { scope: Scope; setScope: (s:
           aria-label="Alternar tema"
         >
           {dark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button
+          onClick={handleSignOut}
+          className="rounded-lg border border-slate-200 dark:border-slate-800 p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          aria-label="Sair"
+        >
+          <LogOut size={16} />
         </button>
       </div>
     </header>
